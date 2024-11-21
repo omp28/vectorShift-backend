@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
-import networkx as nx
 
 app = FastAPI()
 
@@ -37,16 +36,30 @@ def read_root():
 
 @app.post('/pipelines/parse')
 def parse_pipeline(pipeline: Pipeline):
-    G = nx.DiGraph()
+    m1 = {}
+    mp2 = {}
+    is_dag = True  
 
-    for node in pipeline.nodes:
-        G.add_node(node.id, type=node.type, position=node.position, data=node.data)
     for edge in pipeline.edges:
-        G.add_edge(edge.source, edge.target, id=edge.id)
+        start, end = edge.source, edge.target
+        if start not in m1:
+            m1[start] = [end]
+        else:
+            m1[start].append(end)
 
-    num_nodes = len(G.nodes)
-    num_edges = len(G.edges)
-    is_dag = nx.is_directed_acyclic_graph(G)
+    for key, values in m1.items():
+        for value in values:
+            if value not in mp2:
+                mp2[value] = 1
+            else:
+                if key in mp2:
+                    is_dag = False
+                    break
+        if not is_dag:
+            break
+
+    num_nodes = len(pipeline.nodes)
+    num_edges = len(pipeline.edges)
 
     return {
         'num_nodes': num_nodes,
